@@ -1,0 +1,51 @@
+stages:
+  - build
+  - tests
+  - deploy
+  - deploy_preprod
+
+build:
+  stage: build
+  image: java:8-jdk
+  script:
+    - ./gradlew assemble
+    - ./gradlew stage
+  artifacts:
+    paths:
+      - build/libs/*.jar
+    expire_in: 1 week
+  only:
+    - master
+    - preprod
+
+tests:
+  stage: tests
+  image: java:8-jdk
+  script:
+    - ./gradlew check
+
+deploy:
+  stage: deploy
+  image: ruby:2.6
+  script:
+    - apt-get update -qy
+    - apt-get install -yqq ruby ruby-dev nodejs --silent
+    - gem install dpl
+    - dpl --provider=heroku --app=iim-kotlin-prod --api-key=$HEROKU_API_KEY --skip_cFleanup=true
+  dependencies:
+    - build
+  only:
+    - master
+
+deploy_preprod:
+  stage: deploy_preprod
+  image: ruby:2.6
+  script:
+    - apt-get update -qy
+    - apt-get install -yqq ruby ruby-dev nodejs --silent
+    - gem install dpl
+    - dpl --provider=heroku --app=iim-kotlin-preprod --api-key=$HEROKU_API_KEY --skip_cleanup=true
+  dependencies:
+    - build
+  only:
+    - preprod
